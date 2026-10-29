@@ -1,0 +1,150 @@
+@startuml clases-final-capas
+' TPO POO - Rumbo Sur - Diagrama de clases FINAL (con SOLID y GRASP aplicados)
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #3B5B85
+  ArrowColor #3B5B85
+}
+skinparam package {
+  BorderColor #8AA1C1
+  FontColor #3B5B85
+}
+hide empty members
+
+' Vista parcial: capas ui, controlador, servicio, persistencia y excepciones
+top to bottom direction
+package "ui" {
+  class MenuPrincipal {
+    + main(args : String[]) : void
+    - mostrarMenu() : void
+  }
+}
+package "controlador" {
+  class ReservaController <<GRASP Controlador>> {
+    + crearReserva(idSalida : int, docCliente : String, legajoVendedor : int, pasajeros : List<DatosPasajero>, adicionales : Map<String, List<String>>) : Reserva
+    + registrarPago(nroReserva : int, importe : double, medio : MedioPago, cuotas : int) : Pago
+    + modificarReserva(nroReserva : int, docSale : String, nuevo : DatosPasajero) : void
+    + cancelarReserva(nroReserva : int, motivo : String, porAgencia : boolean) : Cancelacion
+  }
+  class SalidaController <<GRASP Controlador>> {
+    + programarSalida(codTour : String, fecha : LocalDate, cupo : int) : Salida
+    + asignarGuia(idSalida : int, legajo : int) : void
+    + asignarVehiculo(idSalida : int, patente : String) : void
+    + emitirListaPasajeros(idSalida : int) : List<Pasajero>
+    + iniciarSalida(idSalida : int) : void
+    + cerrarSalida(idSalida : int) : Liquidacion
+    + controlarVencimientos(hoy : LocalDate) : void
+  }
+  class CatalogoController <<GRASP Controlador>> {
+    + altaTour(t : Tour) : void
+    + agregarTarifa(codTour : String, t : Tarifa) : void
+    + registrarCliente(c : Cliente) : void
+  }
+  class ReporteController <<GRASP Controlador>> {
+    + ocupacionPorSalida() : List<String>
+    + ventasPorVendedor() : List<String>
+    + ingresosPorTour() : List<String>
+    + cancelaciones(desde : LocalDate, hasta : LocalDate) : List<Cancelacion>
+  }
+}
+package "servicio" {
+  class CalculadoraPrecio <<GRASP Fabricación pura>> {
+    - promociones : List<Promocion>
+    + CalculadoraPrecio(promociones : List<Promocion>)
+    + calcularTotal(r : Reserva) : double
+    - precioPasajero(p : Pasajero, base : double) : double
+    - mejorDescuento(r : Reserva) : double
+  }
+  interface Promocion {
+    + aplica(r : Reserva) : boolean
+    + porcentaje() : double
+  }
+  class PromocionAnticipada {
+    + aplica(r : Reserva) : boolean
+    + porcentaje() : double
+  }
+  class PromocionGrupo {
+    + aplica(r : Reserva) : boolean
+    + porcentaje() : double
+  }
+  interface PoliticaCancelacion {
+    + porcentajeDevolucion(diasAntes : long) : double
+  }
+  class PoliticaCancelacionCliente {
+    + porcentajeDevolucion(diasAntes : long) : double
+  }
+  class PoliticaCancelacionAgencia {
+    + porcentajeDevolucion(diasAntes : long) : double
+  }
+  Promocion <|.. PromocionAnticipada
+  Promocion <|.. PromocionGrupo
+  PoliticaCancelacion <|.. PoliticaCancelacionCliente
+  PoliticaCancelacion <|.. PoliticaCancelacionAgencia
+  CalculadoraPrecio o-- "0..*" Promocion
+}
+package "persistencia" {
+  interface "Repositorio<T, ID>" as Repositorio {
+    + guardar(e : T) : void
+    + buscarPorId(id : ID) : Optional<T>
+    + listar() : List<T>
+  }
+  abstract class "RepositorioArchivo<T, ID>" as RepositorioArchivo {
+    # rutaArchivo : String
+    # {abstract} aLinea(e : T) : String
+    # {abstract} desdeLinea(linea : String) : T
+    + guardar(e : T) : void
+    + listar() : List<T>
+  }
+  class ReservaRepositorioArchivo
+  class SalidaRepositorioArchivo
+  class TourRepositorioArchivo
+  class ClienteRepositorioArchivo
+  class EmpleadoRepositorioArchivo
+  Repositorio <|.. RepositorioArchivo
+  RepositorioArchivo <|-- ReservaRepositorioArchivo
+  RepositorioArchivo <|-- SalidaRepositorioArchivo
+  RepositorioArchivo <|-- TourRepositorioArchivo
+  RepositorioArchivo <|-- ClienteRepositorioArchivo
+  RepositorioArchivo <|-- EmpleadoRepositorioArchivo
+}
+package "excepcion" {
+  class ReglaNegocioException
+  class CupoInsuficienteException
+  class EstadoInvalidoException
+  class AsignacionInvalidaException
+  class PagoInvalidoException
+  class PasajeroInvalidoException
+  ReglaNegocioException <|-- CupoInsuficienteException
+  ReglaNegocioException <|-- EstadoInvalidoException
+  ReglaNegocioException <|-- AsignacionInvalidaException
+  ReglaNegocioException <|-- PagoInvalidoException
+  ReglaNegocioException <|-- PasajeroInvalidoException
+}
+package "modelo (ver vista de modelo)" {
+  class Reserva
+  class Salida
+  class Tour
+  class Pasajero
+}
+CalculadoraPrecio ..> Reserva : calcula
+PoliticaCancelacion <.. Reserva
+ReservaController ..> Reserva
+SalidaController ..> Salida
+CatalogoController ..> Tour
+RepositorioArchivo ..> Reserva : persiste en CSV
+ReglaNegocioException <.. Salida : lanza
+MenuPrincipal --> ReservaController
+MenuPrincipal --> SalidaController
+MenuPrincipal --> CatalogoController
+MenuPrincipal --> ReporteController
+
+ReservaController --> Repositorio : usa (DIP)
+SalidaController --> Repositorio : usa (DIP)
+CatalogoController --> Repositorio
+ReporteController --> Repositorio
+ReservaController --> CalculadoraPrecio
+ReservaController ..> PoliticaCancelacion
+@enduml

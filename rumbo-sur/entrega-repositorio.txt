@@ -1,0 +1,5 @@
+TPO Programación Orientada a Objetos – Propuesta B: Agencia de Turismo «Rumbo Sur»
+Integrantes: Lucas Iacobellis, Facundo Fulop
+
+Repositorio GitHub: https://github.com/LucasGI/TPO.POO-
+

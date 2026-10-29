@@ -1,0 +1,69 @@
+@startuml secuencia-cancelar-reserva
+' TPO POO - Rumbo Sur - CU10 Cancelar reserva
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+skinparam sequence {
+  ParticipantBorderColor #3B5B85
+  LifeLineBorderColor #8AA1C1
+  ArrowColor #3B5B85
+}
+autonumber
+actor Vendedor
+participant ":MenuPrincipal" as UI
+participant ":ReservaController" as RC
+participant ":ReservaRepositorioArchivo" as RRepo
+participant "pol:PoliticaCancelacion" as POL
+participant "r:Reserva" as R
+participant "s:Salida" as S
+participant "c:Cancelacion" as C
+participant ":SalidaRepositorioArchivo" as SRepo
+
+Vendedor -> UI : elige "Cancelar reserva",\ningresa número, motivo y si cancela la agencia
+activate UI
+UI -> RC : cancelarReserva(nro, motivo, porAgencia)
+activate RC
+RC -> RRepo : buscarPorId(nro)
+RRepo --> RC : Optional<Reserva>
+
+alt la reserva no existe
+  RC --> UI : throw ReglaNegocioException("Reserva inexistente")
+  UI --> Vendedor : muestra el error
+else la reserva existe
+  alt porAgencia
+    RC -> POL ** : new PoliticaCancelacionAgencia()
+  else cancela el cliente
+    RC -> POL ** : new PoliticaCancelacionCliente()
+  end
+  RC -> R : cancelar(motivo, hoy, pol)
+  activate R
+  alt estado es ANULADA o FINALIZADA
+    R --> RC : throw EstadoInvalidoException
+    RC --> UI : throw EstadoInvalidoException
+    UI --> Vendedor : muestra "La reserva no se puede cancelar"
+  else estado PENDIENTE o CONFIRMADA
+    R -> S : diasHasta(hoy)
+    S --> R : dias
+    R -> POL : porcentajeDevolucion(dias)
+    activate POL
+    note right of POL : Cliente: >=30 → 90 %, 15–29 → 50 %,\n7–14 → 20 %, <7 → 0 %\nAgencia: siempre 100 %
+    POL --> R : porcentaje
+    deactivate POL
+    R -> R : importe = totalPagado() * porcentaje
+    R -> C ** : new Cancelacion(hoy, motivo, porAgencia, importe, medioDelPrimerPago)
+    R -> R : estado = ANULADA
+    R -> S : liberarLugares(r)
+    activate S
+    S -> S : actualizarEstado()
+    note right of S : si estaba COMPLETA y queda lugar → CONFIRMADA\no PROGRAMADA según cupo mínimo
+    deactivate S
+    R --> RC : c
+    deactivate R
+    RC -> RRepo : guardar(r)
+    RC -> SRepo : guardar(s)
+    RC --> UI : c
+    deactivate RC
+    UI --> Vendedor : muestra importe a devolver y medio de pago
+  end
+end
+deactivate UI
+@enduml

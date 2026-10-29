@@ -1,0 +1,97 @@
+@startuml secuencia-crear-reserva
+' TPO POO - Rumbo Sur - CU05 Crear reserva
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+skinparam sequence {
+  ParticipantBorderColor #3B5B85
+  LifeLineBorderColor #8AA1C1
+  ArrowColor #3B5B85
+}
+autonumber
+actor Vendedor
+participant ":MenuPrincipal" as UI
+participant ":ReservaController" as RC
+participant ":SalidaRepositorioArchivo" as SRepo
+participant ":ClienteRepositorioArchivo" as CRepo
+participant ":EmpleadoRepositorioArchivo" as ERepo
+participant "s:Salida" as S
+participant "t:Tour" as T
+participant "r:Reserva" as R
+participant "p:Pasajero" as P
+participant ":CalculadoraPrecio" as CALC
+participant "promo:Promocion" as PROMO
+participant ":ReservaRepositorioArchivo" as RRepo
+
+Vendedor -> UI : elige "Crear reserva" e ingresa\nsalida, cliente, pasajeros y adicionales
+activate UI
+UI -> RC : crearReserva(idSalida, docCliente, legajo, datos, adicionales)
+activate RC
+RC -> SRepo : buscarPorId(idSalida)
+SRepo --> RC : s
+RC -> CRepo : buscarPorId(docCliente)
+CRepo --> RC : cliente
+RC -> ERepo : buscarPorId(legajo)
+ERepo --> RC : vendedor
+RC -> S : reservar(cliente, vendedor, datos)
+activate S
+
+alt estado no admite reservas (completa, en curso, finalizada, cancelada) o lugaresDisponibles() < datos.size()
+  S --> RC : throw CupoInsuficienteException
+  RC --> UI : throw CupoInsuficienteException
+  UI --> Vendedor : muestra "No hay lugares suficientes"
+else hay cupo
+  S -> R ** : new Reserva(cliente, vendedor, s)
+  loop para cada DatosPasajero d
+    S -> R : agregarPasajero(d)
+    activate R
+    R -> P ** : new Pasajero(d)
+    R -> T : validarPasajero(p, fechaInicio)
+    activate T
+    alt pasajero no cumple condiciones (edad mínima en aventura)
+      T --> R : throw PasajeroInvalidoException
+      R --> S : throw PasajeroInvalidoException
+      S --> RC : throw PasajeroInvalidoException
+      RC --> UI : throw PasajeroInvalidoException
+      UI --> Vendedor : muestra el motivo del rechazo
+    end
+    deactivate T
+    loop para cada servicio en t.serviciosObligatorios()
+      R -> R : agregarAdicional(p, servicio)
+    end
+    deactivate R
+  end
+  S -> S : agregar reserva y actualizarEstado()
+  note right of S : si lugaresOcupados() >= cupoMinimo → CONFIRMADA\nsi lugaresOcupados() == cupoMaximo → COMPLETA
+  S --> RC : r
+  deactivate S
+
+  opt hay adicionales opcionales
+    loop para cada adicional elegido
+      RC -> R : agregarAdicional(p, servicio)
+    end
+  end
+
+  RC -> CALC : calcularTotal(r)
+  activate CALC
+  CALC -> T : tarifaVigente(fechaInicio)
+  T --> CALC : tarifa
+  loop para cada pasajero
+    CALC -> P : tipoEn(fechaInicio)
+    P --> CALC : TipoPasajero
+  end
+  loop para cada promoción
+    CALC -> PROMO : aplica(r)
+    PROMO --> CALC : boolean
+  end
+  CALC -> CALC : mejorDescuento(r) + totalAdicionales()
+  CALC --> RC : total
+  deactivate CALC
+  RC -> R : setTotal(total)
+  RC -> RRepo : guardar(r)
+  RC -> SRepo : guardar(s)
+  RC --> UI : r
+  deactivate RC
+  UI --> Vendedor : muestra número, total y seña (30 %)
+end
+deactivate UI
+@enduml

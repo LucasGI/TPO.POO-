@@ -1,0 +1,66 @@
+@startuml casos-de-uso
+' TPO POO - Agencia de Turismo "Rumbo Sur" - Diagrama de casos de uso
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam usecase {
+  BackgroundColor #F7F9FC
+  BorderColor #3B5B85
+}
+skinparam actorBorderColor #3B5B85
+
+actor "Administrador" as Admin
+actor "Vendedor" as Vend
+actor "Coordinador\nde operaciones" as Coord
+actor "Guía" as Guia
+actor "Cliente" as Cli
+actor "Reloj del sistema" as Reloj
+
+rectangle "Sistema Rumbo Sur" {
+  usecase "CU01 Administrar\ncatálogo de tours" as CU01
+  usecase "CU02 Gestionar tarifas\npor temporada" as CU02
+  usecase "CU03 Programar salida" as CU03
+  usecase "CU04 Registrar cliente" as CU04
+  usecase "CU05 Crear reserva" as CU05
+  usecase "CU06 Calcular precio\nde reserva" as CU06
+  usecase "CU07 Contratar\nservicio adicional" as CU07
+  usecase "CU08 Registrar pago" as CU08
+  usecase "CU09 Modificar reserva" as CU09
+  usecase "CU10 Cancelar reserva" as CU10
+  usecase "CU11 Asignar guía\ny vehículo" as CU11
+  usecase "CU12 Emitir lista\nde pasajeros" as CU12
+  usecase "CU13 Iniciar salida" as CU13
+  usecase "CU14 Finalizar y\ncerrar salida" as CU14
+  usecase "CU15 Liquidar\nhonorarios del guía" as CU15
+  usecase "CU16 Emitir reportes" as CU16
+  usecase "CU17 Controlar\nvencimientos" as CU17
+}
+
+Vend -- CU04
+Vend -- CU05
+Vend -- CU08
+Vend -- CU09
+Vend -- CU10
+Cli -- CU05
+Cli -- CU10
+Admin -- CU01
+Admin -- CU15
+Admin -- CU16
+
+CU03 -- Coord
+CU11 -- Coord
+CU12 -- Coord
+CU13 -- Coord
+CU14 -- Coord
+CU17 -- Coord
+CU12 -- Guia
+CU17 -- Reloj
+
+CU02 .> CU01 : <<extend>>
+CU04 .> CU05 : <<extend>>\n(cliente nuevo)
+CU05 .> CU06 : <<include>>
+CU09 .> CU06 : <<include>>
+CU07 .> CU05 : <<extend>>
+CU07 .> CU09 : <<extend>>
+CU14 .> CU15 : <<include>>
+@enduml

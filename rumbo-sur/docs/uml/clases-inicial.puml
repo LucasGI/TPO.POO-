@@ -1,0 +1,204 @@
+@startuml clases-inicial
+' TPO POO - Rumbo Sur - Diagrama de clases INICIAL (antes de aplicar SOLID y GRASP)
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam linetype ortho
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #3B5B85
+  ArrowColor #3B5B85
+}
+hide empty members
+
+' ---------- Personas ----------
+abstract class Persona {
+  - nombre : String
+  - apellido : String
+  - documento : String
+  - telefono : String
+}
+class Cliente {
+  - email : String
+  - paisResidencia : String
+}
+abstract class Empleado {
+  - legajo : int
+  + {abstract} getRol() : String
+}
+class Vendedor {
+  - comision : double
+  + getRol() : String
+}
+class Guia {
+  - idiomas : List<String>
+  - categoriasHabilitadas : List<Categoria>
+  - honorarioDiario : double
+  + getRol() : String
+}
+class Coordinador {
+  + getRol() : String
+}
+class Administrador {
+  + getRol() : String
+}
+Persona <|-- Cliente
+Persona <|-- Empleado
+Empleado <|-- Vendedor
+Empleado <|-- Guia
+Empleado <|-- Coordinador
+Empleado <|-- Administrador
+
+' ---------- Catalogo ----------
+abstract class Tour {
+  - codigo : String
+  - nombre : String
+  - descripcion : String
+  - duracionDias : int
+  - cupoMinimo : int
+  - cupoMaximo : int
+  + {abstract} getCategoria() : Categoria
+  + validarPasajero(p : Pasajero) : boolean
+}
+class TourAventura {
+  - nivelDificultad : String
+  - edadMinima : int
+  + getCategoria() : Categoria
+  + validarPasajero(p : Pasajero) : boolean
+}
+class TourCultural {
+  + getCategoria() : Categoria
+}
+class TourNaturaleza {
+  + getCategoria() : Categoria
+}
+Tour <|-- TourAventura
+Tour <|-- TourCultural
+Tour <|-- TourNaturaleza
+
+class Actividad {
+  - dia : int
+  - orden : int
+  - horario : LocalTime
+  - descripcion : String
+  - lugar : String
+}
+class Proveedor {
+  - nombre : String
+  - cuit : String
+  - contacto : String
+  - servicio : String
+}
+class Tarifa {
+  - temporada : String
+  - vigenciaDesde : LocalDate
+  - vigenciaHasta : LocalDate
+  - precioBase : double
+}
+class ServicioAdicional {
+  - nombre : String
+  - precio : double
+  - obligatorio : boolean
+}
+Tour *-- "1..*" Actividad : itinerario
+Actividad --> "0..1" Proveedor
+Tour *-- "1..*" Tarifa
+Tour o-- "0..*" ServicioAdicional
+
+' ---------- Operacion ----------
+class Salida {
+  - id : int
+  - fechaInicio : LocalDate
+  - fechaFin : LocalDate
+  - cupoMaximo : int
+  - estado : String
+  - listaEmitida : boolean
+}
+class Vehiculo {
+  - patente : String
+  - capacidad : int
+  - tipo : String
+}
+Salida --> "1" Tour
+Salida --> "0..1" Guia
+Salida --> "0..1" Vehiculo
+
+' ---------- Ventas ----------
+class Reserva {
+  - numero : int
+  - fecha : LocalDate
+  - estado : String
+  - total : double
+  + calcularTotal() : double
+  + cancelar(motivo : String, porAgencia : boolean) : double
+}
+class Pasajero {
+  - nombre : String
+  - documento : String
+  - fechaNacimiento : LocalDate
+  - tipo : String
+  - contactoEmergencia : String
+  - restricciones : String
+}
+class Pago {
+  - fecha : LocalDate
+  - importe : double
+  - medio : String
+  - cuotas : int
+}
+class Cancelacion {
+  - fecha : LocalDate
+  - motivo : String
+  - importeDevuelto : double
+}
+class NotaAjuste {
+  - fecha : LocalDate
+  - importe : double
+  - detalle : String
+}
+class Liquidacion {
+  - fecha : LocalDate
+  - dias : int
+  - monto : double
+}
+Reserva --> "1" Cliente : titular
+Reserva --> "1" Vendedor
+Reserva --> "1" Salida
+Reserva *-- "1..*" Pasajero
+Reserva o-- "0..*" ServicioAdicional
+Reserva *-- "0..*" Pago
+Reserva *-- "0..1" Cancelacion
+Reserva *-- "0..*" NotaAjuste
+Liquidacion --> "1" Guia
+Liquidacion --> "1" Salida
+
+' ---------- Clase central ----------
+class SistemaAgencia {
+  - tours : List<Tour>
+  - salidas : List<Salida>
+  - clientes : List<Cliente>
+  - reservas : List<Reserva>
+  - empleados : List<Empleado>
+  - vehiculos : List<Vehiculo>
+  + altaTour(t : Tour) : void
+  + programarSalida(codTour : String, fecha : LocalDate, cupo : int) : Salida
+  + registrarCliente(c : Cliente) : void
+  + crearReserva(idSalida : int, doc : String, pasajeros : List<Pasajero>) : Reserva
+  + registrarPago(nroReserva : int, importe : double, medio : String, cuotas : int) : void
+  + cancelarReserva(nro : int, motivo : String, porAgencia : boolean) : double
+  + asignarGuia(idSalida : int, legajo : int) : void
+  + asignarVehiculo(idSalida : int, patente : String) : void
+  + emitirListaPasajeros(idSalida : int) : List<Pasajero>
+  + iniciarSalida(idSalida : int) : void
+  + cerrarSalida(idSalida : int) : Liquidacion
+  + reporteOcupacion() : String
+  + reporteVentasPorVendedor() : String
+  + guardarEnArchivo() : void
+  + cargarDeArchivo() : void
+}
+SistemaAgencia o-- "0..*" Tour
+SistemaAgencia o-- "0..*" Salida
+SistemaAgencia o-- "0..*" Cliente
+SistemaAgencia o-- "0..*" Reserva
+SistemaAgencia o-- "0..*" Empleado
+SistemaAgencia o-- "0..*" Vehiculo
+@enduml

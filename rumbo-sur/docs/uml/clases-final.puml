@@ -1,0 +1,375 @@
+@startuml clases-final
+' TPO POO - Rumbo Sur - Diagrama de clases FINAL (con SOLID y GRASP aplicados)
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #3B5B85
+  ArrowColor #3B5B85
+}
+skinparam package {
+  BorderColor #8AA1C1
+  FontColor #3B5B85
+}
+hide empty members
+
+package "ui" {
+  class MenuPrincipal {
+    + main(args : String[]) : void
+    - mostrarMenu() : void
+  }
+}
+
+package "controlador" {
+  class ReservaController <<GRASP Controlador>> {
+    + crearReserva(idSalida : int, docCliente : String, legajoVendedor : int, pasajeros : List<DatosPasajero>, adicionales : Map<String, List<String>>) : Reserva
+    + registrarPago(nroReserva : int, importe : double, medio : MedioPago, cuotas : int) : Pago
+    + modificarReserva(nroReserva : int, docSale : String, nuevo : DatosPasajero) : void
+    + cancelarReserva(nroReserva : int, motivo : String, porAgencia : boolean) : Cancelacion
+  }
+  class SalidaController <<GRASP Controlador>> {
+    + programarSalida(codTour : String, fecha : LocalDate, cupo : int) : Salida
+    + asignarGuia(idSalida : int, legajo : int) : void
+    + asignarVehiculo(idSalida : int, patente : String) : void
+    + emitirListaPasajeros(idSalida : int) : List<Pasajero>
+    + iniciarSalida(idSalida : int) : void
+    + cerrarSalida(idSalida : int) : Liquidacion
+    + controlarVencimientos(hoy : LocalDate) : void
+  }
+  class CatalogoController <<GRASP Controlador>> {
+    + altaTour(t : Tour) : void
+    + agregarTarifa(codTour : String, t : Tarifa) : void
+    + registrarCliente(c : Cliente) : void
+  }
+  class ReporteController <<GRASP Controlador>> {
+    + ocupacionPorSalida() : List<String>
+    + ventasPorVendedor() : List<String>
+    + ingresosPorTour() : List<String>
+    + cancelaciones(desde : LocalDate, hasta : LocalDate) : List<Cancelacion>
+  }
+}
+
+package "servicio" {
+  class CalculadoraPrecio <<GRASP Fabricación pura>> {
+    - promociones : List<Promocion>
+    + CalculadoraPrecio(promociones : List<Promocion>)
+    + calcularTotal(r : Reserva) : double
+    - precioPasajero(p : Pasajero, base : double) : double
+    - mejorDescuento(r : Reserva) : double
+  }
+  interface Promocion {
+    + aplica(r : Reserva) : boolean
+    + porcentaje() : double
+  }
+  class PromocionAnticipada {
+    + aplica(r : Reserva) : boolean
+    + porcentaje() : double
+  }
+  class PromocionGrupo {
+    + aplica(r : Reserva) : boolean
+    + porcentaje() : double
+  }
+  interface PoliticaCancelacion {
+    + porcentajeDevolucion(diasAntes : long) : double
+  }
+  class PoliticaCancelacionCliente {
+    + porcentajeDevolucion(diasAntes : long) : double
+  }
+  class PoliticaCancelacionAgencia {
+    + porcentajeDevolucion(diasAntes : long) : double
+  }
+  Promocion <|.. PromocionAnticipada
+  Promocion <|.. PromocionGrupo
+  PoliticaCancelacion <|.. PoliticaCancelacionCliente
+  PoliticaCancelacion <|.. PoliticaCancelacionAgencia
+  CalculadoraPrecio o-- "0..*" Promocion
+}
+
+package "persistencia" {
+  interface "Repositorio<T, ID>" as Repositorio {
+    + guardar(e : T) : void
+    + buscarPorId(id : ID) : Optional<T>
+    + listar() : List<T>
+  }
+  abstract class "RepositorioArchivo<T, ID>" as RepositorioArchivo {
+    # rutaArchivo : String
+    # {abstract} aLinea(e : T) : String
+    # {abstract} desdeLinea(linea : String) : T
+    + guardar(e : T) : void
+    + listar() : List<T>
+  }
+  class ReservaRepositorioArchivo
+  class SalidaRepositorioArchivo
+  class TourRepositorioArchivo
+  class ClienteRepositorioArchivo
+  class EmpleadoRepositorioArchivo
+  Repositorio <|.. RepositorioArchivo
+  RepositorioArchivo <|-- ReservaRepositorioArchivo
+  RepositorioArchivo <|-- SalidaRepositorioArchivo
+  RepositorioArchivo <|-- TourRepositorioArchivo
+  RepositorioArchivo <|-- ClienteRepositorioArchivo
+  RepositorioArchivo <|-- EmpleadoRepositorioArchivo
+}
+
+package "modelo" {
+  abstract class Persona {
+    - nombre : String
+    - apellido : String
+    - documento : String
+    - telefono : String
+  }
+  class Cliente {
+    - email : String
+    - paisResidencia : String
+  }
+  abstract class Empleado {
+    - legajo : int
+    + {abstract} getRol() : String
+  }
+  class Vendedor {
+    - comision : double
+    + getRol() : String
+  }
+  class Guia {
+    - idiomas : List<String>
+    - categorias : Set<Categoria>
+    - honorarioDiario : double
+    + getRol() : String
+    + puedeGuiar(t : Tour) : boolean
+    + estaDisponible(desde : LocalDate, hasta : LocalDate, salidas : List<Salida>) : boolean
+  }
+  class Coordinador {
+    + getRol() : String
+  }
+  class Administrador {
+    + getRol() : String
+  }
+  Persona <|-- Cliente
+  Persona <|-- Empleado
+  Empleado <|-- Vendedor
+  Empleado <|-- Guia
+  Empleado <|-- Coordinador
+  Empleado <|-- Administrador
+
+  abstract class Tour {
+    - codigo : String
+    - nombre : String
+    - descripcion : String
+    - duracionDias : int
+    - cupoMinimo : int
+    - cupoMaximo : int
+    + {abstract} getCategoria() : Categoria
+    + validarPasajero(p : Pasajero, fecha : LocalDate) : void
+    + serviciosObligatorios() : List<ServicioAdicional>
+    + tarifaVigente(fecha : LocalDate) : Tarifa
+  }
+  class TourAventura {
+    - nivelDificultad : String
+    - edadMinima : int
+    + getCategoria() : Categoria
+    + validarPasajero(p : Pasajero, fecha : LocalDate) : void
+    + serviciosObligatorios() : List<ServicioAdicional>
+  }
+  class TourCultural {
+    + getCategoria() : Categoria
+  }
+  class TourNaturaleza {
+    + getCategoria() : Categoria
+  }
+  Tour <|-- TourAventura
+  Tour <|-- TourCultural
+  Tour <|-- TourNaturaleza
+
+  class Actividad {
+    - dia : int
+    - orden : int
+    - horario : LocalTime
+    - descripcion : String
+    - lugar : String
+  }
+  class Proveedor {
+    - nombre : String
+    - cuit : String
+    - contacto : String
+    - servicio : TipoServicio
+  }
+  class Tarifa {
+    - temporada : Temporada
+    - vigenciaDesde : LocalDate
+    - vigenciaHasta : LocalDate
+    - precioBase : double
+    + vigenteEn(fecha : LocalDate) : boolean
+  }
+  class ServicioAdicional {
+    - codigo : String
+    - nombre : String
+    - precio : double
+    - obligatorio : boolean
+  }
+  Tour *-- "1..*" Actividad : itinerario
+  Actividad --> "0..1" Proveedor
+  Tour *-- "1..*" Tarifa
+  Tour o-- "0..*" ServicioAdicional
+
+  class Salida <<Comparable>> {
+    - id : int
+    - fechaInicio : LocalDate
+    - fechaFin : LocalDate
+    - cupoMaximo : int
+    - estado : EstadoSalida
+    - listaEmitida : boolean
+    + reservar(c : Cliente, v : Vendedor, datos : List<DatosPasajero>) : Reserva
+    + lugaresDisponibles() : int
+    + lugaresOcupados() : int
+    + liberarLugares(r : Reserva) : void
+    + diasHasta(hoy : LocalDate) : long
+    + asignarGuia(g : Guia, otras : List<Salida>) : void
+    + asignarVehiculo(v : Vehiculo) : void
+    + iniciar() : void
+    + finalizar() : Liquidacion
+    + ventasAdicionales() : double
+    + compareTo(o : Salida) : int
+    - actualizarEstado() : void
+  }
+  class Vehiculo {
+    - patente : String
+    - capacidad : int
+    - tipo : TipoVehiculo
+  }
+  Salida --> "1" Tour
+  Salida --> "0..1" Guia
+  Salida --> "0..1" Vehiculo
+  Salida o-- "0..*" Reserva
+
+  class Reserva {
+    - numero : int
+    - fecha : LocalDate
+    - estado : EstadoReserva
+    - total : double
+    + agregarPasajero(d : DatosPasajero) : Pasajero
+    + reemplazarPasajero(doc : String, d : DatosPasajero, hoy : LocalDate) : void
+    + agregarAdicional(p : Pasajero, s : ServicioAdicional) : void
+    + registrarPago(importe : double, medio : MedioPago, cuotas : int) : Pago
+    + cancelar(motivo : String, hoy : LocalDate, pol : PoliticaCancelacion) : Cancelacion
+    + cantidadLugares() : int
+    + totalPagado() : double
+    + saldo() : double
+    + totalAdicionales() : double
+  }
+  class Pasajero <<Comparable>> {
+    - nombre : String
+    - apellido : String
+    - documento : String
+    - fechaNacimiento : LocalDate
+    - jubilado : boolean
+    - contactoEmergencia : String
+    - restricciones : String
+    + tipoEn(fecha : LocalDate) : TipoPasajero
+    + edadEn(fecha : LocalDate) : int
+    + compareTo(o : Pasajero) : int
+  }
+  class Pago {
+    - fecha : LocalDate
+    - importe : double
+    - recargo : double
+    - medio : MedioPago
+    - cuotas : int
+  }
+  class Cancelacion {
+    - fecha : LocalDate
+    - motivo : String
+    - porAgencia : boolean
+    - importeDevuelto : double
+    - medio : MedioPago
+  }
+  class NotaAjuste {
+    - fecha : LocalDate
+    - importe : double
+    - detalle : String
+  }
+  class Liquidacion {
+    - fecha : LocalDate
+    - diasTrabajados : int
+    - montoFijo : double
+    - montoAdicionales : double
+    + total() : double
+  }
+  Reserva --> "1" Cliente : titular
+  Reserva --> "1" Vendedor
+  Reserva --> "1" Salida
+  Reserva *-- "1..*" Pasajero
+  Pasajero o-- "0..*" ServicioAdicional : adicionales
+  Reserva *-- "0..*" Pago
+  Reserva *-- "0..1" Cancelacion
+  Reserva *-- "0..*" NotaAjuste
+  Liquidacion --> "1" Guia
+  Salida *-- "0..1" Liquidacion
+
+  enum TipoPasajero {
+    INFANTE(0.0)
+    MENOR(0.6)
+    ADULTO(1.0)
+    - factor : double
+    + getFactor() : double
+  }
+  enum EstadoSalida {
+    PROGRAMADA
+    CONFIRMADA
+    COMPLETA
+    EN_CURSO
+    FINALIZADA
+    CANCELADA
+    + puedePasarA(e : EstadoSalida) : boolean
+  }
+  enum EstadoReserva {
+    PENDIENTE
+    CONFIRMADA
+    ANULADA
+    FINALIZADA
+  }
+  enum MedioPago {
+    EFECTIVO
+    TRANSFERENCIA
+    TARJETA
+  }
+  enum Categoria {
+    AVENTURA
+    CULTURAL
+    NATURALEZA
+  }
+  enum Temporada {
+    BAJA
+    MEDIA
+    ALTA
+  }
+}
+
+package "excepcion" {
+  class ReglaNegocioException
+  class CupoInsuficienteException
+  class EstadoInvalidoException
+  class AsignacionInvalidaException
+  class PagoInvalidoException
+  class PasajeroInvalidoException
+  ReglaNegocioException <|-- CupoInsuficienteException
+  ReglaNegocioException <|-- EstadoInvalidoException
+  ReglaNegocioException <|-- AsignacionInvalidaException
+  ReglaNegocioException <|-- PagoInvalidoException
+  ReglaNegocioException <|-- PasajeroInvalidoException
+}
+
+MenuPrincipal --> ReservaController
+MenuPrincipal --> SalidaController
+MenuPrincipal --> CatalogoController
+MenuPrincipal --> ReporteController
+
+ReservaController --> Repositorio : usa (DIP)
+SalidaController --> Repositorio : usa (DIP)
+CatalogoController --> Repositorio
+ReporteController --> Repositorio
+ReservaController --> CalculadoraPrecio
+ReservaController ..> PoliticaCancelacion
+Reserva ..> PoliticaCancelacion
+Pasajero ..> TipoPasajero
+@enduml
