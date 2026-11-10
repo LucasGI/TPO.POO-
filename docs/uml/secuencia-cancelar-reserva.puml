@@ -9,25 +9,25 @@ skinparam sequence {
 }
 autonumber
 actor Vendedor
-participant ":MenuPrincipal" as UI
+participant ":PanelReservas" as UI
 participant ":ReservaController" as RC
-participant ":ReservaRepositorioArchivo" as RRepo
+participant ":ReservaRepositorio" as RRepo
 participant "pol:PoliticaCancelacion" as POL
 participant "r:Reserva" as R
 participant "s:Salida" as S
 participant "c:Cancelacion" as C
-participant ":SalidaRepositorioArchivo" as SRepo
+participant ":SalidaRepositorio" as SRepo
 
-Vendedor -> UI : elige "Cancelar reserva",\ningresa número, motivo y si cancela la agencia
+Vendedor -> UI : presiona "Cancelar reserva" y completa\nnúmero, motivo y si cancela la agencia
 activate UI
-UI -> RC : cancelarReserva(nro, motivo, porAgencia)
+UI -> RC : cancelarReserva(nro, motivo, porAgencia, hoy)
 activate RC
 RC -> RRepo : buscarPorId(nro)
-RRepo --> RC : Optional<Reserva>
+RRepo --> RC : r (o null)
 
-alt la reserva no existe
+alt r == null
   RC --> UI : throw ReglaNegocioException("Reserva inexistente")
-  UI --> Vendedor : muestra el error
+  UI --> Vendedor : JOptionPane: el error
 else la reserva existe
   alt porAgencia
     RC -> POL ** : new PoliticaCancelacionAgencia()
@@ -36,10 +36,10 @@ else la reserva existe
   end
   RC -> R : cancelar(motivo, hoy, pol)
   activate R
-  alt estado es ANULADA o FINALIZADA
+  alt estado ANULADA o FINALIZADA, o la salida ya esta EN_CURSO
     R --> RC : throw EstadoInvalidoException
     RC --> UI : throw EstadoInvalidoException
-    UI --> Vendedor : muestra "La reserva no se puede cancelar"
+    UI --> Vendedor : JOptionPane: "La reserva no se puede cancelar"
   else estado PENDIENTE o CONFIRMADA
     R -> S : diasHasta(hoy)
     S --> R : dias
@@ -49,7 +49,8 @@ else la reserva existe
     POL --> R : porcentaje
     deactivate POL
     R -> R : importe = totalPagado() * porcentaje
-    R -> C ** : new Cancelacion(hoy, motivo, porAgencia, importe, medioDelPrimerPago)
+    R -> POL : esCancelacionDeAgencia()
+R -> C ** : new Cancelacion(hoy, motivo, deAgencia, importe, medioDelPrimerPago)
     R -> R : estado = ANULADA
     R -> S : liberarLugares(r)
     activate S
@@ -62,7 +63,7 @@ else la reserva existe
     RC -> SRepo : guardar(s)
     RC --> UI : c
     deactivate RC
-    UI --> Vendedor : muestra importe a devolver y medio de pago
+    UI --> Vendedor : JOptionPane: importe a devolver y medio de pago
   end
 end
 deactivate UI

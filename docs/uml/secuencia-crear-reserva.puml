@@ -9,22 +9,22 @@ skinparam sequence {
 }
 autonumber
 actor Vendedor
-participant ":MenuPrincipal" as UI
+participant ":PanelReservas" as UI
 participant ":ReservaController" as RC
-participant ":SalidaRepositorioArchivo" as SRepo
-participant ":ClienteRepositorioArchivo" as CRepo
-participant ":EmpleadoRepositorioArchivo" as ERepo
+participant ":SalidaRepositorio" as SRepo
+participant ":ClienteRepositorio" as CRepo
+participant ":EmpleadoRepositorio" as ERepo
 participant "s:Salida" as S
 participant "t:Tour" as T
 participant "r:Reserva" as R
 participant "p:Pasajero" as P
 participant ":CalculadoraPrecio" as CALC
 participant "promo:Promocion" as PROMO
-participant ":ReservaRepositorioArchivo" as RRepo
+participant ":ReservaRepositorio" as RRepo
 
-Vendedor -> UI : elige "Crear reserva" e ingresa\nsalida, cliente, pasajeros y adicionales
+Vendedor -> UI : presiona "Crear reserva" y completa\nsalida, titular, vendedor y cada pasajero
 activate UI
-UI -> RC : crearReserva(idSalida, docCliente, legajo, datos, adicionales)
+UI -> RC : crearReserva(idSalida, docCliente, legajo, datos, hoy)
 activate RC
 RC -> SRepo : buscarPorId(idSalida)
 SRepo --> RC : s
@@ -32,15 +32,15 @@ RC -> CRepo : buscarPorId(docCliente)
 CRepo --> RC : cliente
 RC -> ERepo : buscarPorId(legajo)
 ERepo --> RC : vendedor
-RC -> S : reservar(cliente, vendedor, datos)
+RC -> S : reservar(numero, hoy, cliente, vendedor, datos)
 activate S
 
 alt estado no admite reservas (completa, en curso, finalizada, cancelada) o lugaresDisponibles() < datos.size()
   S --> RC : throw CupoInsuficienteException
   RC --> UI : throw CupoInsuficienteException
-  UI --> Vendedor : muestra "No hay lugares suficientes"
+  UI --> Vendedor : JOptionPane: "No hay lugares suficientes"
 else hay cupo
-  S -> R ** : new Reserva(cliente, vendedor, s)
+  S -> R ** : new Reserva(numero, hoy, cliente, vendedor, s)
   loop para cada DatosPasajero d
     S -> R : agregarPasajero(d)
     activate R
@@ -52,7 +52,7 @@ else hay cupo
       R --> S : throw PasajeroInvalidoException
       S --> RC : throw PasajeroInvalidoException
       RC --> UI : throw PasajeroInvalidoException
-      UI --> Vendedor : muestra el motivo del rechazo
+      UI --> Vendedor : JOptionPane: el motivo del rechazo
     end
     deactivate T
     loop para cada servicio en t.serviciosObligatorios()
@@ -60,12 +60,12 @@ else hay cupo
     end
     deactivate R
   end
-  S -> S : agregar reserva y actualizarEstado()
+  S -> S : reservas.add(r) y actualizarEstado()
   note right of S : si lugaresOcupados() >= cupoMinimo → CONFIRMADA\nsi lugaresOcupados() == cupoMaximo → COMPLETA
   S --> RC : r
   deactivate S
 
-  opt hay adicionales opcionales
+  opt el pasajero eligio adicionales (codigosAdicionales)
     loop para cada adicional elegido
       RC -> R : agregarAdicional(p, servicio)
     end
@@ -86,12 +86,12 @@ else hay cupo
   CALC -> CALC : mejorDescuento(r) + totalAdicionales()
   CALC --> RC : total
   deactivate CALC
-  RC -> R : setTotal(total)
+  RC -> R : actualizarTotal(total, hoy, "Alta de reserva")
   RC -> RRepo : guardar(r)
   RC -> SRepo : guardar(s)
   RC --> UI : r
   deactivate RC
-  UI --> Vendedor : muestra número, total y seña (30 %)
+  UI --> Vendedor : JOptionPane: número, total y seña (30 %)
 end
 deactivate UI
 @enduml
