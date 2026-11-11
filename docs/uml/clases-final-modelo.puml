@@ -1,26 +1,21 @@
 @startuml clases-final-modelo
-' TPO POO - Rumbo Sur - Diagrama de clases FINAL (con SOLID y GRASP aplicados)
+' TPO POO - Rumbo Sur - Diagrama de clases final (Etapa 2) - paquete modelo
 skinparam classAttributeIconSize 0
 skinparam shadowing false
-skinparam packageStyle rectangle
 skinparam class {
   BackgroundColor #FFFFFF
   BorderColor #3B5B85
   ArrowColor #3B5B85
 }
-skinparam package {
-  BorderColor #8AA1C1
-  FontColor #3B5B85
-}
 hide empty members
 
-' Vista parcial: paquete modelo del diagrama final
 package "modelo" {
-  abstract class Persona {
+  abstract class Persona <<Serializable>> {
     - nombre : String
     - apellido : String
     - documento : String
     - telefono : String
+    + getNombreCompleto() : String
   }
   class Cliente {
     - email : String
@@ -32,15 +27,17 @@ package "modelo" {
   }
   class Vendedor {
     - comision : double
+    + calcularComision(ventas : double) : double
     + getRol() : String
   }
   class Guia {
     - idiomas : List<String>
-    - categorias : Set<Categoria>
+    - categorias : List<Categoria>
     - honorarioDiario : double
-    + getRol() : String
+    + habilitarCategoria(c : Categoria) : void
     + puedeGuiar(t : Tour) : boolean
     + estaDisponible(desde : LocalDate, hasta : LocalDate, salidas : List<Salida>) : boolean
+    + getRol() : String
   }
   class Coordinador {
     + getRol() : String
@@ -55,7 +52,7 @@ package "modelo" {
   Empleado <|-- Coordinador
   Empleado <|-- Administrador
 
-  abstract class Tour {
+  abstract class Tour <<Serializable>> {
     - codigo : String
     - nombre : String
     - descripcion : String
@@ -64,14 +61,21 @@ package "modelo" {
     - cupoMaximo : int
     + {abstract} getCategoria() : Categoria
     + validarPasajero(p : Pasajero, fecha : LocalDate) : void
+    + validar() : void
     + serviciosObligatorios() : List<ServicioAdicional>
     + tarifaVigente(fecha : LocalDate) : Tarifa
+    + agregarActividad(dia, orden, horario, descripcion, lugar, proveedor) : void
+    + agregarTarifa(t : Tarifa) : void
+    + agregarServicio(s : ServicioAdicional) : void
+    + buscarServicio(codigo : String) : ServicioAdicional
+    + crearSalida(id : int, fecha : LocalDate, cupo : int) : Salida
   }
   class TourAventura {
     - nivelDificultad : String
     - edadMinima : int
     + getCategoria() : Categoria
     + validarPasajero(p : Pasajero, fecha : LocalDate) : void
+    + validar() : void
     + serviciosObligatorios() : List<ServicioAdicional>
   }
   class TourCultural {
@@ -84,12 +88,13 @@ package "modelo" {
   Tour <|-- TourCultural
   Tour <|-- TourNaturaleza
 
-  class Actividad {
+  class Actividad <<Comparable>> {
     - dia : int
     - orden : int
-    - horario : LocalTime
+    - horario : String
     - descripcion : String
     - lugar : String
+    + compareTo(o : Actividad) : int
   }
   class Proveedor {
     - nombre : String
@@ -103,11 +108,13 @@ package "modelo" {
     - vigenciaHasta : LocalDate
     - precioBase : double
     + vigenteEn(fecha : LocalDate) : boolean
+    + seSuperponeCon(t : Tarifa) : boolean
   }
   class ServicioAdicional {
     - codigo : String
     - nombre : String
     - precio : double
+    - tipo : TipoServicio
     - obligatorio : boolean
   }
   Tour *-- "1..*" Actividad : itinerario
@@ -122,18 +129,21 @@ package "modelo" {
     - cupoMaximo : int
     - estado : EstadoSalida
     - listaEmitida : boolean
-    + reservar(c : Cliente, v : Vendedor, datos : List<DatosPasajero>) : Reserva
-    + lugaresDisponibles() : int
+    + reservar(numero, hoy, titular, vendedor, datos : List<DatosPasajero>) : Reserva
+    + verificarLugarPara(cantidad : int) : void
     + lugaresOcupados() : int
+    + lugaresDisponibles() : int
     + liberarLugares(r : Reserva) : void
+    + actualizarEstado() : void
     + diasHasta(hoy : LocalDate) : long
-    + asignarGuia(g : Guia, otras : List<Salida>) : void
+    + asignarGuia(g : Guia, todas : List<Salida>) : void
     + asignarVehiculo(v : Vehiculo) : void
+    + emitirListaPasajeros() : List<Pasajero>
     + iniciar() : void
-    + finalizar() : Liquidacion
+    + finalizar(hoy : LocalDate) : Liquidacion
+    + cancelar(motivo, hoy, pol : PoliticaCancelacion) : List<Cancelacion>
     + ventasAdicionales() : double
     + compareTo(o : Salida) : int
-    - actualizarEstado() : void
   }
   class Vehiculo {
     - patente : String
@@ -144,6 +154,7 @@ package "modelo" {
   Salida --> "0..1" Guia
   Salida --> "0..1" Vehiculo
   Salida o-- "0..*" Reserva
+  Salida *-- "0..1" Liquidacion
 
   class Reserva {
     - numero : int
@@ -153,12 +164,20 @@ package "modelo" {
     + agregarPasajero(d : DatosPasajero) : Pasajero
     + reemplazarPasajero(doc : String, d : DatosPasajero, hoy : LocalDate) : void
     + agregarAdicional(p : Pasajero, s : ServicioAdicional) : void
-    + registrarPago(importe : double, medio : MedioPago, cuotas : int) : Pago
-    + cancelar(motivo : String, hoy : LocalDate, pol : PoliticaCancelacion) : Cancelacion
+    + registrarPago(importe, medio : MedioPago, cuotas, hoy) : Pago
+    + cancelar(motivo, hoy, pol : PoliticaCancelacion) : Cancelacion
+    + actualizarTotal(total, hoy, detalle) : void
     + cantidadLugares() : int
     + totalPagado() : double
     + saldo() : double
+    + montoSenia() : double
     + totalAdicionales() : double
+  }
+  class DatosPasajero {
+    - nombre, apellido, documento : String
+    - fechaNacimiento : LocalDate
+    - jubilado : boolean
+    - codigosAdicionales : List<String>
   }
   class Pasajero <<Comparable>> {
     - nombre : String
@@ -168,8 +187,9 @@ package "modelo" {
     - jubilado : boolean
     - contactoEmergencia : String
     - restricciones : String
-    + tipoEn(fecha : LocalDate) : TipoPasajero
     + edadEn(fecha : LocalDate) : int
+    + tipoEn(fecha : LocalDate) : TipoPasajero
+    + totalAdicionales() : double
     + compareTo(o : Pasajero) : int
   }
   class Pago {
@@ -178,6 +198,7 @@ package "modelo" {
     - recargo : double
     - medio : MedioPago
     - cuotas : int
+    + getTotalCobrado() : double
   }
   class Cancelacion {
     - fecha : LocalDate
@@ -207,13 +228,12 @@ package "modelo" {
   Reserva *-- "0..1" Cancelacion
   Reserva *-- "0..*" NotaAjuste
   Liquidacion --> "1" Guia
-  Salida *-- "0..1" Liquidacion
+  Reserva ..> DatosPasajero : crea Pasajero con
 
   enum TipoPasajero {
     INFANTE(0.0)
     MENOR(0.6)
     ADULTO(1.0)
-    - factor : double
     + getFactor() : double
   }
   enum EstadoSalida {
@@ -224,6 +244,7 @@ package "modelo" {
     FINALIZADA
     CANCELADA
     + puedePasarA(e : EstadoSalida) : boolean
+    + admiteReservas() : boolean
   }
   enum EstadoReserva {
     PENDIENTE
@@ -245,6 +266,18 @@ package "modelo" {
     BAJA
     MEDIA
     ALTA
+  }
+  enum TipoServicio {
+    EXCURSION
+    TRASLADO
+    SEGURO
+    ALOJAMIENTO
+    COMIDA
+  }
+  enum TipoVehiculo {
+    COMBI
+    MINIBUS
+    COLECTIVO
   }
 }
 @enduml
