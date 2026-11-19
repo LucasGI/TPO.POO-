@@ -42,7 +42,6 @@ El código respeta la estructura del diagrama de clases final de la Etapa 1: los
 
 ## 4. Reflexión del grupo
 
-> Borrador para revisar entre todos y ajustar con la experiencia real del grupo.
 
 Lo más útil fue haber hecho bien el diseño en la Etapa 1. Con el diagrama final y los dos de secuencia ya sabíamos qué clase hacía cada cosa, y la codificación fue bastante directa: los mensajes de "Crear reserva" y "Cancelar reserva" están en el código en el mismo orden que en el diagrama.
 
