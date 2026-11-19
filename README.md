@@ -11,6 +11,7 @@ Tiene interfaz gráfica hecha con Swing y guarda los datos en archivos para que 
 | --- | --- |
 | Lucas Iacobellis | 1217175 |
 | Facundo Fulop | 1216428 |
+| Alan Daniel Ayala Ocampo | 1196870 |
 
 ## Qué hace
 
