@@ -38,6 +38,7 @@ El código respeta la estructura del diagrama de clases final de la Etapa 1: los
 | --- | --- |
 | Lucas Iacobellis (1217175) | Estructura del proyecto y README. Paquete `modelo`: jerarquía de personas, tours y sus subclases, actividades, tarifas, servicios, proveedores, vehículos, `Pasajero` y enumerados. Pruebas `PasajeroTest` y `TourTest`. Diagramas de casos de uso y de secuencia. |
 | Facundo Fulop (1216428) | Excepciones. `Salida`, `Reserva`, pagos, cancelaciones, notas de ajuste y liquidación. Paquete `servicio`: precios, promociones, políticas de cancelación y comparadores. Pruebas `SalidaTest`, `ReservaTest`, `CalculadoraPrecioTest` y `PoliticaCancelacionTest`. Diagramas de clases. |
+| Alan Daniel Ayala Ocampo (1196870) | Persistencia (`Repositorio`, `BaseDatos`, `ArchivoDatos`, `ArchivoTexto`). Controladores. Interfaz Swing, `Main` y datos de prueba. Prueba `ControladoresTest`, plan de pruebas funcionales e informe final. |
 
 ## 4. Reflexión del grupo
 
